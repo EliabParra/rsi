@@ -1,35 +1,31 @@
 import Net from 'net'
 import os from 'os'
+import { onJsonMessage, writeJson } from '../shared/jsonStream.js'
+import { getLocalIP } from '../shared/getLocalIP.js'
 
 export default class Dispatcher {
     constructor() {
         this.boServers = new Map()
     }
 
-    #getLocalIp() {
-        const interfaces = os.networkInterfaces()
-        for (const interfaceName in interfaces) {
-            const addresses = interfaces[interfaceName]
-            for (const address of addresses) {
-            if (address.family === 'IPv4' && !address.internal) return address.address
-            }
-        }
-        return 'No se encontró IP privada'
+    loadBOServers() {
+        this.boServers.set('Calculadora', {
+            ip: getLocalIP(),
+            port: 4000
+        })
     }
-
 
     init() {
         const server = Net.createServer((socket) => {
-            socket.on('data', (buffer) => {
-                const msg = buffer.toString()
-                console.log('recibí:', msg)
-                socket.write('respuesta: ' + msg)
+            onJsonMessage(socket, (jsonData) => {
+                jsonData.server = 'Servidor de despacho'
+                writeJson(socket, jsonData)
             })
 
             socket.on('end', () => console.log('cliente desconectado'))
             socket.on('error', (err) => console.error(err))
         })
 
-        server.listen(3000, () => console.log(`Servidor escuchando en ${this.#getLocalIp()}:3000`))
+        server.listen(3000, () => console.log(`Servidor escuchando en ${getLocalIP()}:3000`))
     }
 }

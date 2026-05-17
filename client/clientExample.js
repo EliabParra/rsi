@@ -1,15 +1,21 @@
 import Net from 'net'
+import { onJsonMessage, writeJson } from '../shared/jsonStream.js'
 
 const dispatcherIP = '192.168.10.7' // Reemplaza con tu IP local
 
+const calcJson = {
+    className: 'Calculadora',
+    methodName: 'sumar',
+    params: [5, 3]
+}
+
+
 const client = Net.createConnection({ port: 3000, host: dispatcherIP }, () => {
-    console.log('Conectado al servidor')
-    client.write('Hola, servidor!')
+    writeJson(client, calcJson)
 })
 
-client.on('data', (data) => {
-    console.log('Respuesta del servidor:', data.toString())
-    client.end()
+onJsonMessage(client, (jsonData) => {
+    console.log('Respuesta del servidor:', jsonData)
 })
 
 client.on('end', () => console.log('Desconectado del servidor'))
