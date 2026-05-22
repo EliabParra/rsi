@@ -1,0 +1,11 @@
+import os from 'os';
+global.os = os;
+import Dispatcher from './server/Dispatcher.js';
+import CalculatorServer from './BO_Servers/server/CalculatorServer.js';
+import EquationServer from './BO_Servers/server/EquationServer.js';
+const d = new Dispatcher();
+d.init();
+const calc = new CalculatorServer();
+calc.init();
+const eq = new EquationServer();
+eq.init();
