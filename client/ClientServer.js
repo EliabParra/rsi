@@ -1,15 +1,16 @@
 import ProxyCalculator from './ProxyCalculator.js';
 import ProxyEquations from './ProxyEquations.js';
 
-const BO_HOST = '127.0.0.1';
-const CALCULATOR_PORT = 4001;
-const EQUATIONS_PORT = 4002;
+import { config } from '../shared/config.js';
+
+const DISPATCHER_HOST = config.dispatcher.host;
+const DISPATCHER_PORT = config.dispatcher.port;
 
 async function runClientApp() {
     console.log('Inicializando Servidor Cliente...');
 
-    const calcProxy = new ProxyCalculator(BO_HOST, CALCULATOR_PORT);
-    const ecProxy = new ProxyEquations(BO_HOST, EQUATIONS_PORT);
+    const calcProxy = new ProxyCalculator(DISPATCHER_HOST, DISPATCHER_PORT);
+    const ecProxy = new ProxyEquations(DISPATCHER_HOST, DISPATCHER_PORT);
 
     try {
         const resSuma = await calcProxy.suma(5, 5);

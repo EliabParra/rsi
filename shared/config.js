@@ -1,4 +1,4 @@
-import { getLocalIP } from "./getLocalIP"
+import { getLocalIP } from "./getLocalIP.js"
 
 export const config = {
     dispatcher: {

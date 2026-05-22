@@ -1,11 +1,12 @@
 import os from 'os';
 global.os = os;
+import { config } from './shared/config.js';
 import Dispatcher from './server/Dispatcher.js';
 import CalculatorServer from './BO_Servers/server/CalculatorServer.js';
 import EquationServer from './BO_Servers/server/EquationServer.js';
 const d = new Dispatcher();
 d.init();
-const calc = new CalculatorServer();
+const calc = new CalculatorServer(config.boServers.calculator);
 calc.init();
-const eq = new EquationServer();
+const eq = new EquationServer(config.boServers.equation);
 eq.init();

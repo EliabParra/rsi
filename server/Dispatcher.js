@@ -1,7 +1,6 @@
 import Net from 'net'
-import os from 'os'
 import { onJsonMessage, writeJson } from '../shared/jsonStream.js'
-import { getLocalIP } from '../shared/getLocalIP.js'
+import { config } from '../shared/config.js'
 
 export default class Dispatcher {
     constructor() {
@@ -9,23 +8,48 @@ export default class Dispatcher {
     }
 
     loadBOServers() {
-        this.boServers.set('Calculadora', {
-            ip: getLocalIP(),
-            port: 4000
-        })
+        this.boServers.set('Calculator', config.boServers.calculator)
+        this.boServers.set('Equations', config.boServers.equation)
     }
 
     init() {
-        const server = Net.createServer((socket) => {
-            onJsonMessage(socket, (jsonData) => {
-                jsonData.server = 'Servidor de despacho'
-                writeJson(socket, jsonData)
-            })
+        this.loadBOServers()
 
-            socket.on('end', () => console.log('cliente desconectado'))
-            socket.on('error', (err) => console.error(err))
+        this.socketServer = Net.createServer((socket) => {
+            onJsonMessage(socket, (payload) => {
+                this.handleRequest(payload, socket)
+            })
+            socket.on("error", (err) => console.error("Dispatcher error:", err))
         })
 
-        server.listen(3000, () => console.log(`Servidor escuchando en ${getLocalIP()}:3000`))
+        this.socketServer.listen(config.dispatcher.port, config.dispatcher.host, () => console.log(`Servidor escuchando en ${config.dispatcher.host}:${config.dispatcher.port}`))
+    }
+
+    handleRequest(payload, socket) {
+        const { method, className, args } = payload
+        const boServer = this.boServers.get(className)
+
+        if (!boServer) {
+            writeJson(socket, { message: `No se encontró el servidor de objetos de negocio para la clase ${className}` })
+            socket.end()
+            return
+        }
+
+        const forwardPayload = { method, className, args }
+        const forwardSocket = Net.createConnection({ port: boServer.port, host: boServer.host }, () => {
+            writeJson(forwardSocket, forwardPayload)
+        })
+
+        onJsonMessage(forwardSocket, (response) => {
+            writeJson(socket, response)
+            forwardSocket.end()
+            socket.end()
+        })
+
+        forwardSocket.on('error', (err) => {
+            console.error(`Error al conectar con el servidor de objetos de negocio ${className}:`, err)
+            writeJson(socket, { message: `Error al conectar con el servidor de objetos de negocio ${className}` })
+            socket.end()
+        })
     }
 }
