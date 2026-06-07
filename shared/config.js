@@ -7,21 +7,21 @@ export const config = {
     },
     boServers: {
         calculator: {
-            host: getLocalIP(),
+            host: '172.20.243.176',
             port: 4001
         },
         equation: {
-            host: getLocalIP(),
+            host: '172.20.243.176',
             port: 4002
         }
     },
     clients: {
         client1: {
-            host: getLocalIP(),
+            host: '172.20.243.244',
             port: 5001
         },
         client2: {
-            host: getLocalIP(),
+            host: '172.20.243.244',
             port: 5002
         }
     }
