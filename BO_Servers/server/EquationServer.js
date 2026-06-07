@@ -1,15 +1,20 @@
 import Net from "net";
 import resolveClassInstance from "../methodResolver.js";
 import { onJsonMessage, writeJson } from "../../shared/jsonStream.js";
+import MetricsCollector from "../MetricsCollector.js";
 
 export default class EquationServer {
-  constructor({ port = 4002, host = "0.0.0.0" } = {}) {
+  constructor({ id = "eq-1", port = 4002, host = "0.0.0.0" } = {}) {
+    this.id = id;
     this.port = port;
     this.host = host;
     this.socketServer = null;
+    this.metrics = new MetricsCollector();
   }
 
   init() {
+    this.metrics.start();
+
     this.socketServer = Net.createServer((socket) => {
       onJsonMessage(socket, (payload) => {
         this.handleRequest(payload, socket);
@@ -24,39 +29,44 @@ export default class EquationServer {
   }
 
   async handleRequest(payload, socket) {
-    const { className, method, args } = payload || {};
-
-    if (!className || !method) {
-      writeJson(socket, {
-        message: "Solicitud inválida: className y method son requeridos",
-      });
-      return;
-    }
-
-    const classInstance = await resolveClassInstance({ className, method });
-
-    if (typeof classInstance === "string") {
-      writeJson(socket, { message: classInstance });
-      return;
-    }
-
-    const fn = classInstance[method];
-    if (typeof fn !== "function") {
-      writeJson(socket, {
-        message: `Método '${method}' no disponible en '${className}'`,
-      });
-      return;
-    }
-
+    this.metrics.requestStarted();
     try {
-      const result = await fn(args || {});
-      const response =
-        typeof result === "string" ? { message: result } : result;
-      writeJson(socket, response);
-    } catch (error) {
-      writeJson(socket, {
-        message: `Error al ejecutar '${method}': ${error.message}`,
-      });
+      const { className, method, args } = payload || {};
+
+      if (!className || !method) {
+        writeJson(socket, {
+          message: "Solicitud inválida: className y method son requeridos",
+        });
+        return;
+      }
+
+      const classInstance = await resolveClassInstance({ className, method });
+
+      if (typeof classInstance === "string") {
+        writeJson(socket, { message: classInstance });
+        return;
+      }
+
+      const fn = classInstance[method];
+      if (typeof fn !== "function") {
+        writeJson(socket, {
+          message: `Método '${method}' no disponible en '${className}'`,
+        });
+        return;
+      }
+
+      try {
+        const result = await fn(args || {});
+        const response =
+          typeof result === "string" ? { message: result } : result;
+        writeJson(socket, response);
+      } catch (error) {
+        writeJson(socket, {
+          message: `Error al ejecutar '${method}': ${error.message}`,
+        });
+      }
+    } finally {
+      this.metrics.requestFinished();
     }
   }
 }
