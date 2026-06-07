@@ -27,15 +27,27 @@ export default class Dispatcher {
 
     handleRequest(payload, socket) {
         const { method, className, args } = payload
-        const boServer = this.boServers.get(className)
+        const instances = this.boServers.get(className)
 
-        if (!boServer) {
+        if (!instances || instances.length === 0) {
             writeJson(socket, { message: `No se encontró el servidor de objetos de negocio para la clase ${className}` })
             socket.end()
             return
         }
 
+        const boServer = this.selectBOServer(instances)
         const forwardPayload = { method, className, args }
+        this.forwardToBOServer(boServer, forwardPayload, socket, className)
+    }
+
+    // Selección de la instancia destino.
+    // Fase 0: sin LoadBalancer todavía, se toma la primera instancia disponible.
+    // En la Fase 4 esto se reemplaza por la decisión rankeada del LoadBalancer.
+    selectBOServer(instances) {
+        return instances[0]
+    }
+
+    forwardToBOServer(boServer, forwardPayload, socket, className) {
         const forwardSocket = Net.createConnection({ port: boServer.port, host: boServer.host }, () => {
             writeJson(forwardSocket, forwardPayload)
         })

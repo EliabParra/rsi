@@ -6,14 +6,12 @@ export const config = {
         port: 3000
     },
     boServers: {
-        calculator: {
-            host: '172.20.243.176',
-            port: 4001
-        },
-        equation: {
-            host: '172.20.243.176',
-            port: 4002
-        }
+        calculator: [
+            { id: 'calc-1', host: '172.20.243.176', port: 4001 }
+        ],
+        equation: [
+            { id: 'eq-1', host: '172.20.243.176', port: 4002 }
+        ]
     },
     clients: {
         client1: {
