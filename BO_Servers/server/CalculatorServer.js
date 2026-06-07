@@ -142,21 +142,6 @@ export default class CalculatorServer {
     }
   }
 
-  handleDispatcherDisconnect() {
-    if (this.heartbeatIntervalId) {
-      clearInterval(this.heartbeatIntervalId);
-      this.heartbeatIntervalId = null;
-    }
-
-    if (!this.isReconnecting) {
-      this.isReconnecting = true;
-      // Reintentar la conexión cada 5 segundos hasta que el Dispatcher vuelva a la vida
-      setTimeout(() => {
-        this.connectToDispatcher();
-      }, 5000);
-    }
-  }
-
   startHeartbeatLoop() {
     // Limpiamos cualquier bucle previo por seguridad
     if (this.heartbeatIntervalId) clearInterval(this.heartbeatIntervalId);

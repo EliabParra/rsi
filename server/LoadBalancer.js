@@ -101,7 +101,13 @@ export default class LoadBalancer {
     const classMap = this.servers.get(className);
     if (!classMap || classMap.size === 0) return [];
 
-    const instances = Array.from(classMap.values());
+    // Filtra servers caídos: si su heartbeat venció, queda fuera del ranking
+    // aunque el pruning todavía no lo haya removido del Map.
+    const now = Date.now();
+    const instances = Array.from(classMap.values()).filter(
+      (s) => now - s.lastSeen <= this.timeoutLimit,
+    );
+    if (instances.length === 0) return [];
     if (instances.length === 1) return instances;
 
     // Inicializar los máximos con los valores base de la config o 0
