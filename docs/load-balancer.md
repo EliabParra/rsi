@@ -289,6 +289,36 @@ score = capacity · (1 - load)    // más capacidad y menos carga → score más
 
 ---
 
+## 7.1 Estado de implementación
+
+Fases 0-4 implementadas + base de Fase 5 (pesos/intervalos configurables). Mapa
+de archivos:
+
+| Fase | Estado | Archivos |
+| ---- | ------ | -------- |
+| 0 — Groundwork | ✅ | `shared/config.js`, `server/Dispatcher.js`, `start.js` |
+| 1 — Métricas BO | ✅ | `BO_Servers/MetricsCollector.js`, `BO_Servers/server/*Server.js` |
+| 2 — Transporte heartbeat | ✅ | `BO_Servers/HeartbeatClient.js`, `BO_Servers/server/*Server.js` |
+| 3 — LB registro + scoring | ✅ | `server/LoadBalancer.js` |
+| 4 — Cableado al Dispatcher | ✅ | `server/Dispatcher.js` |
+| 5 — Tuning/hardening | parcial | `shared/config.js` (`loadBalancer`); EWMA ya en Fase 1. Pendiente: circuit breaker, P2C, load test |
+
+**Desvíos respecto al plan original (justificados):**
+
+- **`register` incluye `host`/`port`.** El BO server se autodescribe: reporta
+  dónde el Dispatcher debe conectarse. Evita que el LB tenga que cruzar el
+  `serverId` contra la config para resolver la dirección.
+- **`capacity` se calcula en `rank()`, no en `register()`.** La normalización
+  `norm()` es relativa al conjunto de candidatos, que cambia a medida que entran
+  y salen servers. Calcularla *lazy* en cada `rank()` (n≈3, trivial) la mantiene
+  siempre correcta en vez de cachear un valor que se desactualiza.
+- **Fallback estático.** Si todavía no llegaron heartbeats (arranque), el
+  Dispatcher usa el listado de `config.boServers` en vez de devolver error.
+- **Compatibilidad hacia atrás.** Un mensaje sin `type` se trata como `rpc`, así
+  los clientes actuales siguen funcionando sin cambios.
+
+---
+
 ## 8. Pendientes / observaciones
 
 - **Inconsistencia de naming a unificar:** el diagrama usa `methodName` / `params`
