@@ -58,8 +58,11 @@ export class Criminal {
     }
   }
 
-  async search({ q } = {}) {
+  async search({ q = '' } = {}) {
     try {
+      if (!q) {
+        return { msg: 'Search query (q) is required', result: null }
+      }
       const pattern = `%${q}%`
       const { rows } = await pool.query(
         `SELECT * FROM criminals

@@ -35,6 +35,11 @@ const id   = flags.id   ?? process.env.BO_ID   ?? 'bo-1'
 const port = flags.port ?? parseInt(process.env.BO_PORT ?? '4001', 10)
 const host = flags.host ?? '0.0.0.0'
 
+if (Number.isNaN(port)) {
+  console.error(`Invalid port: ${flags.port ?? process.env.BO_PORT}`)
+  process.exit(1)
+}
+
 // DB_HOST is read by db/pool.js from process.env directly — no action needed here.
 // Set DB_HOST in the environment before running if not using the default.
 

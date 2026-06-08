@@ -16,10 +16,11 @@ import { config } from '../../shared/config.js'
  * removing BO classes.
  */
 export default class BOServer {
-  constructor({ id = 'bo-1', host = '0.0.0.0', port = 4001 } = {}) {
+  constructor({ id = 'bo-1', host = '0.0.0.0', port = 4001, className = 'Criminal' } = {}) {
     this.id = id
     this.host = host
     this.port = port
+    this.className = className
     this.socketServer = null
     this.metrics = new MetricsCollector()
     this.heartbeat = null
@@ -45,11 +46,9 @@ export default class BOServer {
   _startHeartbeat() {
     this.heartbeat = new HeartbeatClient({
       serverId: this.id,
-      // className is not fixed here — the Dispatcher maps serverId → className
-      // via the register message; we advertise a generic 'BO' tag.
-      // The Dispatcher in Phase 2 will map Criminal boServers by id.
-      // For now, matching CalculatorServer behavior: send the primary class name.
-      className: 'Criminal',
+      // The class this replica serves; the Dispatcher maps it to the
+      // boServers[className] cluster when registering the heartbeat.
+      className: this.className,
       host: this.host,
       port: this.port,
       dispatcher: config.dispatcher,
