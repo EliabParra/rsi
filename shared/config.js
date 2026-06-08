@@ -6,22 +6,19 @@ export const config = {
         port: 3000
     },
     boServers: {
-        calculator: [
-            { id: 'calc-1', host: '172.20.243.176', port: 4001 }
-        ],
-        equation: [
-            { id: 'eq-1', host: '172.20.243.176', port: 4002 }
+        Criminal: [
+            { id: 'bo-1', host: '192.168.0.21', port: 4001 },
+            { id: 'bo-2', host: '192.168.0.22', port: 4001 },
+            { id: 'bo-3', host: '192.168.0.23', port: 4001 },
         ]
     },
-    clients: {
-        client1: {
-            host: '172.20.243.244',
-            port: 5001
-        },
-        client2: {
-            host: '172.20.243.244',
-            port: 5002
-        }
+    db: {
+        host: process.env.DB_HOST || '192.168.0.10',
+        port: 5432,
+        user: 'rsi',
+        password: 'rsi',
+        database: 'criminals',
+        max: 10
     },
     // Parámetros operativos del balanceador (Fases 2-5).
     loadBalancer: {
@@ -35,5 +32,18 @@ export const config = {
             static: { cpuCores: 0.4, cpuSpeed: 0.3, totalMem: 0.3 },
             dynamic: { inFlight: 0.4, mem: 0.2, cpu: 0.2, rps: 0.2 }
         }
+    },
+    loadTest: {
+        targetRps: 2000,
+        durationSec: 30,
+        virtualClients: 50,
+        readWriteRatio: 0.9,
+        sampleEvery: 200,
+        dashboardIntervalMs: 500
+    },
+    log: {
+        level: 'info',
+        color: true,
+        routingStream: true
     }
 }

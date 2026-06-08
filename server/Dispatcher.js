@@ -10,8 +10,7 @@ export default class Dispatcher {
     }
 
     loadBOServers() {
-        this.boServers.set('Calculator', config.boServers.calculator)
-        this.boServers.set('Equations', config.boServers.equation)
+        this.boServers.set('Criminal', config.boServers.Criminal)
     }
 
     init() {
