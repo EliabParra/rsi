@@ -2,14 +2,18 @@ import Net from "net";
 import resolveClassInstance from "../methodResolver.js";
 import { onJsonMessage, writeJson } from "../../shared/jsonStream.js";
 import MetricsCollector from "../MetricsCollector.js";
+import HeartbeatClient from "../HeartbeatClient.js";
+import { config } from "../../shared/config.js";
 
 export default class EquationServer {
   constructor({ id = "eq-1", port = 4002, host = "0.0.0.0" } = {}) {
     this.id = id;
+    this.className = "Equations";
     this.port = port;
     this.host = host;
     this.socketServer = null;
     this.metrics = new MetricsCollector();
+    this.heartbeat = null;
   }
 
   init() {
@@ -25,7 +29,22 @@ export default class EquationServer {
 
     this.socketServer.listen(this.port, this.host, () => {
       console.log(`EquationServer escuchando en ${this.host}:${this.port}`);
+      this._startHeartbeat();
     });
+  }
+
+  // Conexión persistente al Dispatcher: register + heartbeat (Fase 2).
+  _startHeartbeat() {
+    this.heartbeat = new HeartbeatClient({
+      serverId: this.id,
+      className: this.className,
+      host: this.host,
+      port: this.port,
+      dispatcher: config.dispatcher,
+      metrics: this.metrics,
+      intervalMs: config.loadBalancer?.heartbeatIntervalMs,
+    });
+    this.heartbeat.start();
   }
 
   async handleRequest(payload, socket) {
