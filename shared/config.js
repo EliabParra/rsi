@@ -1,32 +1,50 @@
-import { getLocalIP } from "./getLocalIP.js"
+import { getLocalIP } from './getLocalIP.js'
+
+const localHost = process.env.RSI_HOST || getLocalIP()
+const toPort = (value, fallback) => {
+    const parsed = Number.parseInt(value, 10)
+    return Number.isFinite(parsed) ? parsed : fallback
+}
 
 export const config = {
     dispatcher: {
-        host: getLocalIP(),
-        port: 3000
+        host: process.env.DISPATCHER_HOST || localHost,
+        port: toPort(process.env.DISPATCHER_PORT, 3000)
     },
     boServers: {
         Criminal: [
-            { id: 'bo-1', host: '192.168.0.21', port: 4001 },
-            { id: 'bo-2', host: '192.168.0.22', port: 4001 },
-            { id: 'bo-3', host: '192.168.0.23', port: 4001 },
+            {
+                id: process.env.BO_1_ID || 'bo-1',
+                host: process.env.BO_1_HOST || localHost,
+                port: toPort(process.env.BO_1_PORT, 4001)
+            },
+            {
+                id: process.env.BO_2_ID || 'bo-2',
+                host: process.env.BO_2_HOST || localHost,
+                port: toPort(process.env.BO_2_PORT, 4002)
+            },
+            {
+                id: process.env.BO_3_ID || 'bo-3',
+                host: process.env.BO_3_HOST || localHost,
+                port: toPort(process.env.BO_3_PORT, 4003)
+            },
         ]
     },
     db: {
-        host: process.env.DB_HOST || '192.168.0.10',
-        port: 5432,
-        user: 'rsi',
-        password: 'rsi',
-        database: 'criminals',
-        max: 10
+        host: process.env.DB_HOST || localHost,
+        port: toPort(process.env.DB_PORT, 5432),
+        user: process.env.DB_USER || 'rsi',
+        password: process.env.DB_PASSWORD || 'rsi',
+        database: process.env.DB_NAME || 'criminals',
+        max: toPort(process.env.DB_POOL_MAX, 10)
     },
     // Parámetros operativos del balanceador (Fases 2-5).
     loadBalancer: {
         // Cada cuánto cada BO server empuja su heartbeat al Dispatcher.
-        heartbeatIntervalMs: 1000,
+        heartbeatIntervalMs: toPort(process.env.HEARTBEAT_INTERVAL_MS, 1000),
         // Si no llega heartbeat en este lapso, el server se considera unhealthy
         // y queda fuera del ranking (≈ 3 heartbeats perdidos).
-        staleTimeoutMs: 3000,
+        staleTimeoutMs: toPort(process.env.STALE_TIMEOUT_MS, 3000),
         // Pesos del score. Cada grupo suma 1 para poder tunear sin tocar código.
         weights: {
             static: { cpuCores: 0.4, cpuSpeed: 0.3, totalMem: 0.3 },
@@ -34,16 +52,16 @@ export const config = {
         }
     },
     loadTest: {
-        targetRps: 2000,
-        durationSec: 30,
-        virtualClients: 50,
-        readWriteRatio: 0.9,
-        sampleEvery: 200,
-        dashboardIntervalMs: 500
+        targetRps: toPort(process.env.TARGET_RPS, 2000),
+        durationSec: toPort(process.env.DURATION_SEC, 30),
+        virtualClients: toPort(process.env.VIRTUAL_CLIENTS, 50),
+        readWriteRatio: Number.parseFloat(process.env.READ_WRITE_RATIO || '0.9'),
+        sampleEvery: toPort(process.env.SAMPLE_EVERY, 200),
+        dashboardIntervalMs: toPort(process.env.DASHBOARD_INTERVAL_MS, 500)
     },
     log: {
-        level: 'info',
-        color: true,
-        routingStream: true
+        level: process.env.LOG_LEVEL || 'info',
+        color: process.env.LOG_COLOR !== 'false',
+        routingStream: process.env.ROUTING_STREAM !== 'false'
     }
 }
