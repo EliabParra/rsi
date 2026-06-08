@@ -1,0 +1,19 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: rsi
+      POSTGRES_PASSWORD: rsi
+      POSTGRES_DB: criminals
+    ports:
+      - "0.0.0.0:5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./db/init:/docker-entrypoint-initdb.d
+  adminer:
+    image: adminer:latest
+    ports:
+      - "8080:8080"
+
+volumes:
+  pgdata:
