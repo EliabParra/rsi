@@ -112,6 +112,7 @@ export default class LoadBalancer {
 
       const totalInFlight = s.inFlight + s.localInFlight;
       const memPressure = s.totalMem > 0 ? 1 - s.freeMem / s.totalMem : 0;
+      const freeMemPct = s.totalMem > 0 ? s.freeMem / s.totalMem : 0;
 
       // Carga: in-flight y RPS pesan MÁS sobre servers de poca capacidad
       // (relativos a capacity). RPS es carga, no premio.
@@ -122,7 +123,17 @@ export default class LoadBalancer {
         (this.wd.rps * (s.rps / maxRps)) / capacity;
 
       const score = capacity * (1 - load);
-      return { s, score };
+      return {
+        s,
+        score,
+        snapshot: {
+          capacity,
+          inFlight: totalInFlight,
+          rps: s.rps,
+          cpuUtil: s.cpuUtil,
+          freeMemPct,
+        },
+      };
     });
 
     scored.sort((a, b) => b.score - a.score);
@@ -131,6 +142,9 @@ export default class LoadBalancer {
       id: e.s.id,
       host: e.s.host,
       port: e.s.port,
+      score: e.score,
+      reason: cands.length === 1 ? 'único sano' : 'mayor score del cluster',
+      snapshot: e.snapshot,
     }));
   }
 

@@ -2,11 +2,14 @@ import Net from 'net'
 import { onJsonMessage, writeJson } from '../shared/jsonStream.js'
 import { config } from '../shared/config.js'
 import LoadBalancer from './LoadBalancer.js'
+import { createLogger } from '../shared/logger.js'
 
 export default class Dispatcher {
     constructor() {
         this.boServers = new Map()
         this.lb = new LoadBalancer(config.loadBalancer)
+        this.logger = createLogger(config.log)
+        this.reqSeq = 0
     }
 
     loadBOServers() {
@@ -49,7 +52,9 @@ export default class Dispatcher {
     }
 
     handleRpc(payload, socket) {
-        const { method, className, args } = payload
+        const { method, className, args, clientId } = payload
+        this.reqSeq += 1
+        const reqId = payload?.reqId ?? `req-${this.reqSeq}`
         const ranked = this.resolveTargets(className)
 
         if (ranked.length === 0) {
@@ -59,7 +64,7 @@ export default class Dispatcher {
         }
 
         const forwardPayload = { type: 'rpc', method, className, args }
-        this.forwardWithFailover(ranked, forwardPayload, socket, className, 0)
+        this.forwardWithFailover(ranked, forwardPayload, socket, className, 0, { reqId, clientId })
     }
 
     // Lista de instancias destino ordenada por preferencia.
@@ -70,11 +75,19 @@ export default class Dispatcher {
         if (ranked.length > 0) return ranked
 
         const instances = this.boServers.get(className) || []
-        return instances.map((inst, i) => ({ rank: i + 1, id: inst.id, host: inst.host, port: inst.port }))
+        return instances.map((inst, i) => ({
+            rank: i + 1,
+            id: inst.id,
+            host: inst.host,
+            port: inst.port,
+            score: null,
+            reason: 'fallback estático (sin heartbeats)',
+            snapshot: {},
+        }))
     }
 
     // Intenta el rank 1; si la conexión falla, cae en cascada al rank 2, 3…
-    forwardWithFailover(ranked, forwardPayload, socket, className, index) {
+    forwardWithFailover(ranked, forwardPayload, socket, className, index, context = {}) {
         if (index >= ranked.length) {
             writeJson(socket, { message: `Error al conectar con el servidor de objetos de negocio ${className}` })
             socket.end()
@@ -93,7 +106,12 @@ export default class Dispatcher {
             if (done) return
             done = true
             this.lb.onResponse(target.id)
-            writeJson(socket, response)
+            const responseWithMeta = {
+                ...response,
+                _meta: { servedBy: target.id, rank: target.rank, attempts: index + 1 },
+            }
+            this.logRouteDecision(context, target, ranked.length)
+            writeJson(socket, responseWithMeta)
             forwardSocket.end()
             socket.end()
         })
@@ -102,10 +120,31 @@ export default class Dispatcher {
             if (done) return
             done = true
             this.lb.onResponse(target.id)
-            console.error(`[dispatcher] fallo rank ${target.rank} (${target.id}) para ${className}: ${err.message}`)
+            const next = ranked[index + 1]
+            this.logger.failover({ reqId: context.reqId, fromId: target.id, toId: next?.id, rank: next?.rank, error: err.message })
             forwardSocket.destroy()
             // Cascada al siguiente candidato.
-            this.forwardWithFailover(ranked, forwardPayload, socket, className, index + 1)
+            this.forwardWithFailover(ranked, forwardPayload, socket, className, index + 1, context)
         })
     }
+
+    logRouteDecision(context, target, total) {
+        if (!config.log?.routingStream) return
+        const sampleEvery = config.loadTest?.sampleEvery ?? 1
+        const seq = this.reqSeq || 1
+        const shouldSample = sampleEvery <= 1 || seq % sampleEvery === 0
+        if (!shouldSample) return
+
+        this.logger.route({
+            reqId: context.reqId,
+            clientId: context.clientId,
+            targetId: target.id,
+            rank: target.rank,
+            total,
+            score: target.score,
+            snapshot: target.snapshot,
+            reason: target.reason,
+        })
+    }
+
 }
