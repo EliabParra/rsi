@@ -11,7 +11,7 @@ services:
       - pgdata:/var/lib/postgresql/data
       - ./db/init:/docker-entrypoint-initdb.d
   adminer:
-    image: adminer:latest
+    image: adminer:4
     ports:
       - "8080:8080"
 
