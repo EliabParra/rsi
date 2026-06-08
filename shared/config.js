@@ -8,30 +8,30 @@ const toPort = (value, fallback) => {
 
 export const config = {
     dispatcher: {
-        host: process.env.DISPATCHER_HOST || localHost,
+        host: '10.35.112.156',
         port: toPort(process.env.DISPATCHER_PORT, 3000)
     },
     boServers: {
         Criminal: [
             {
-                id: process.env.BO_1_ID || 'bo-1',
-                host: process.env.BO_1_HOST || localHost,
+                id: 'bo-1',
+                host: '10.35.112.244',
                 port: toPort(process.env.BO_1_PORT, 4001)
             },
             {
-                id: process.env.BO_2_ID || 'bo-2',
-                host: process.env.BO_2_HOST || localHost,
+                id: 'bo-2',
+                host: '10.35.112.244',
                 port: toPort(process.env.BO_2_PORT, 4002)
             },
             {
-                id: process.env.BO_3_ID || 'bo-3',
-                host: process.env.BO_3_HOST || localHost,
+                id: 'bo-3',
+                host: '10.35.112.176',
                 port: toPort(process.env.BO_3_PORT, 4003)
             },
         ]
     },
     db: {
-        host: process.env.DB_HOST || localHost,
+        host: '10.35.112.156',
         port: toPort(process.env.DB_PORT, 5432),
         user: process.env.DB_USER || 'rsi',
         password: process.env.DB_PASSWORD || 'rsi',

@@ -11,6 +11,7 @@
  */
 
 import BOServer from './BO_Servers/server/BOServer.js'
+import { getLocalIP } from './shared/getLocalIP.js'
 
 function parseArgs() {
   const args = process.argv.slice(2)
@@ -33,7 +34,7 @@ const flags = parseArgs()
 
 const id   = flags.id   ?? process.env.BO_ID   ?? 'bo-1'
 const port = flags.port ?? parseInt(process.env.BO_PORT ?? '4001', 10)
-const host = flags.host ?? '0.0.0.0'
+const host = flags.host ?? getLocalIP()
 
 if (Number.isNaN(port)) {
   console.error(`Invalid port: ${flags.port ?? process.env.BO_PORT}`)
