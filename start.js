@@ -1,12 +1,8 @@
 import os from 'os';
 global.os = os;
-import { config } from './shared/config.js';
 import Dispatcher from './server/Dispatcher.js';
-import CalculatorServer from './BO_Servers/server/CalculatorServer.js';
-import EquationServer from './BO_Servers/server/EquationServer.js';
+
+// Phase 1: demo BO servers (Calculator, Equations) removed.
+// Phase 2 will wire config.boServers.Criminal into Dispatcher.loadBOServers.
 const d = new Dispatcher();
 d.init();
-const calc = new CalculatorServer(config.boServers.calculator[0]);
-calc.init();
-const eq = new EquationServer(config.boServers.equation[0]);
-eq.init();
