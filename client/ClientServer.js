@@ -1,5 +1,4 @@
-import ProxyCalculator from './ProxyCalculator.js';
-import ProxyEquations from './ProxyEquations.js';
+import ProxyCriminal from './ProxyCriminal.js';
 
 import { config } from '../shared/config.js';
 
@@ -9,24 +8,17 @@ const DISPATCHER_PORT = config.dispatcher.port;
 async function runClientApp() {
     console.log('Inicializando Servidor Cliente...');
 
-    const calcProxy = new ProxyCalculator(DISPATCHER_HOST, DISPATCHER_PORT);
-    const ecProxy = new ProxyEquations(DISPATCHER_HOST, DISPATCHER_PORT);
+    const criminalProxy = new ProxyCriminal(DISPATCHER_HOST, DISPATCHER_PORT, { clientId: 'demo-client' });
 
     try {
-        const resSuma = await calcProxy.suma(5, 5);
-        console.log('Suma(5, 5) — mensaje:', resSuma.msg, 'resultado:', resSuma.result);
+        const resList = await criminalProxy.list({ limit: 5 });
+        console.log('list(limit:5) — mensaje:', resList.msg, 'resultado:', resList.result);
 
-        const resResta = await calcProxy.resta(20, 8);
-        console.log('Resta(20, 8) — mensaje:', resResta.msg, 'resultado:', resResta.result);
+        const resSearch = await criminalProxy.search('El Chapo');
+        console.log('search("El Chapo") — mensaje:', resSearch.msg, 'resultado:', resSearch.result);
 
-        const resMult = await calcProxy.multiplicacion(4, 5);
-        console.log('Multiplicacion(4, 5) — mensaje:', resMult.msg, 'resultado:', resMult.result);
-
-        const resDiv = await calcProxy.division(10, 2);
-        console.log('Division(10, 2) — mensaje:', resDiv.msg, 'resultado:', resDiv.result);
-
-        const resCuadratica = await ecProxy.cuadratica(1, -5, 6);
-        console.log('Cuadratica(1, -5, 6) — mensaje:', resCuadratica.msg, 'resultado:', resCuadratica.result);
+        const resGet = await criminalProxy.getById(1);
+        console.log('getById(1) — mensaje:', resGet.msg, 'resultado:', resGet.result);
 
     } catch (err) {
         console.error('Error:', err.message);
