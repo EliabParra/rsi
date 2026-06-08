@@ -54,7 +54,8 @@ export default class Dispatcher {
     handleRpc(payload, socket) {
         const { method, className, args, clientId } = payload
         this.reqSeq += 1
-        const reqId = payload?.reqId ?? `req-${this.reqSeq}`
+        const seq = this.reqSeq
+        const reqId = payload?.reqId ?? `req-${seq}`
         const ranked = this.resolveTargets(className)
 
         if (ranked.length === 0) {
@@ -64,7 +65,7 @@ export default class Dispatcher {
         }
 
         const forwardPayload = { type: 'rpc', method, className, args }
-        this.forwardWithFailover(ranked, forwardPayload, socket, className, 0, { reqId, clientId })
+        this.forwardWithFailover(ranked, forwardPayload, socket, className, 0, { reqId, clientId, seq })
     }
 
     // Lista de instancias destino ordenada por preferencia.
@@ -131,7 +132,7 @@ export default class Dispatcher {
     logRouteDecision(context, target, total) {
         if (!config.log?.routingStream) return
         const sampleEvery = config.loadTest?.sampleEvery ?? 1
-        const seq = this.reqSeq || 1
+        const seq = context.seq || 1
         const shouldSample = sampleEvery <= 1 || seq % sampleEvery === 0
         if (!shouldSample) return
 
