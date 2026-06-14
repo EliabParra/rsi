@@ -1,4 +1,4 @@
-import pool from '../../db/pool.js'
+import { writePool, readPool } from '../../db/pool.js'
 
 const ALLOWED_COLUMNS = new Set([
   'full_name',
@@ -12,7 +12,7 @@ const ALLOWED_COLUMNS = new Set([
 export class Criminal {
   async create({ full_name, alias, nationality, crime, danger_level, captured } = {}) {
     try {
-      const { rows } = await pool.query(
+      const { rows } = await writePool.query(
         `INSERT INTO criminals (full_name, alias, nationality, crime, danger_level, captured)
          VALUES ($1, $2, $3, $4, $5, $6)
          RETURNING *`,
@@ -33,7 +33,7 @@ export class Criminal {
 
   async getById({ id } = {}) {
     try {
-      const { rows } = await pool.query(
+      const { rows } = await readPool.query(
         'SELECT * FROM criminals WHERE id = $1',
         [id],
       )
@@ -48,7 +48,7 @@ export class Criminal {
 
   async list({ limit = 20, offset = 0 } = {}) {
     try {
-      const { rows } = await pool.query(
+      const { rows } = await readPool.query(
         'SELECT * FROM criminals ORDER BY id LIMIT $1 OFFSET $2',
         [limit, offset],
       )
@@ -64,7 +64,7 @@ export class Criminal {
         return { msg: 'Search query (q) is required', result: null }
       }
       const pattern = `%${q}%`
-      const { rows } = await pool.query(
+      const { rows } = await readPool.query(
         `SELECT * FROM criminals
          WHERE full_name ILIKE $1 OR alias ILIKE $1
          ORDER BY id`,
@@ -90,7 +90,7 @@ export class Criminal {
       const setClauses = entries.map(([col], i) => `${col} = $${i + 2}`)
       const values = [id, ...entries.map(([, v]) => v)]
 
-      const { rows } = await pool.query(
+      const { rows } = await writePool.query(
         `UPDATE criminals SET ${setClauses.join(', ')}
          WHERE id = $1
          RETURNING *`,
@@ -108,7 +108,7 @@ export class Criminal {
 
   async remove({ id } = {}) {
     try {
-      const { rows } = await pool.query(
+      const { rows } = await writePool.query(
         'DELETE FROM criminals WHERE id = $1 RETURNING *',
         [id],
       )

@@ -5,7 +5,7 @@
  *   node start-bo.js --id bo-1 --port 4001
  *
  * Usage (env vars):
- *   BO_ID=bo-1 BO_PORT=4001 DB_HOST=192.168.0.10 node start-bo.js
+ *   BO_ID=bo-1 BO_PORT=4001 DISPATCHER_HOST=127.0.0.1 node start-bo.js
  *
  * CLI flags take precedence over env vars.
  */
@@ -41,8 +41,8 @@ if (Number.isNaN(port)) {
   process.exit(1)
 }
 
-// DB_HOST is read by db/pool.js from process.env directly — no action needed here.
-// Set DB_HOST in the environment before running if not using the default.
+// DB hosts/ports are read by db/pool.js from process.env directly — no action needed here.
+// Export .env before running: export $(grep -v '^#' .env | xargs)
 
 const bo = new BOServer({ id, host, port })
 bo.init()

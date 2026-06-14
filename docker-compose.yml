@@ -1,19 +1,60 @@
 services:
-  db:
+  db-primary:
     image: postgres:16-alpine
+    container_name: rsi-db-primary
     environment:
       POSTGRES_USER: rsi
       POSTGRES_PASSWORD: rsi
       POSTGRES_DB: criminals
     ports:
-      - "0.0.0.0:5432:5432"
+      - "5432:5432"
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - pgdata-primary:/var/lib/postgresql/data
       - ./db/init:/docker-entrypoint-initdb.d
+      - ./db/primary/pg_hba.conf:/etc/postgresql/pg_hba.conf
+    command: >
+      postgres
+      -c hba_file=/etc/postgresql/pg_hba.conf
+      -c listen_addresses=*
+      -c wal_level=replica
+      -c max_wal_senders=10
+      -c max_replication_slots=10
+      -c hot_standby=on
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U rsi -d criminals"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+  db-replica:
+    image: postgres:16-alpine
+    container_name: rsi-db-replica
+    depends_on:
+      db-primary:
+        condition: service_healthy
+    environment:
+      POSTGRES_USER: rsi
+      POSTGRES_PASSWORD: rsi
+      POSTGRES_DB: criminals
+      POSTGRES_REPLICATION_USER: replicator
+      POSTGRES_REPLICATION_PASSWORD: replicator
+      PRIMARY_HOST: db-primary
+      PRIMARY_PORT: 5432
+    ports:
+      - "5433:5432"
+    volumes:
+      - pgdata-replica:/var/lib/postgresql/data
+      - ./db/replica/entrypoint.sh:/usr/local/bin/replica-entrypoint.sh
+    entrypoint: ["/usr/local/bin/replica-entrypoint.sh"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U rsi -d criminals"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
   adminer:
     image: adminer:4
     ports:
       - "8080:8080"
 
 volumes:
-  pgdata:
+  pgdata-primary:
+  pgdata-replica:
