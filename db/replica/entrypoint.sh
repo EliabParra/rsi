@@ -17,4 +17,9 @@ if [ ! -f "$PGDATA/PG_VERSION" ]; then
     -D "$PGDATA" -Fp -Xs -P -R
   echo "Réplica inicializada."
 fi
-exec docker-entrypoint.sh postgres
+# hot_standby_feedback=on: la réplica le avisa al primary qué filas siguen
+# usando sus lectores, para que el primary NO las limpie (autovacuum) y así
+# evitar "terminating connection due to conflict with recovery" bajo carga.
+exec docker-entrypoint.sh postgres \
+  -c hot_standby_feedback=on \
+  -c max_standby_streaming_delay=30s
