@@ -13,7 +13,9 @@ export default class Dispatcher {
     }
 
     loadBOServers() {
-        this.boServers.set('Criminal', config.boServers.Criminal)
+        for (const [className, instances] of Object.entries(config.boServers || {})) {
+            this.boServers.set(className, instances)
+        }
     }
 
     init() {
