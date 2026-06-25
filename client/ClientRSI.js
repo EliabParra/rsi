@@ -2,7 +2,11 @@ import Net from 'net';
 import { onJsonMessage, writeJson } from '../shared/jsonStream.js';
 
 export default class ClientRSI {
-    constructor(host = '127.0.0.1', port = 3000, options = {}) {
+    constructor(
+        host = process.env.DISPATCHER_HOST || '127.0.0.1',
+        port = Number.parseInt(process.env.DISPATCHER_PORT, 10) || 3000,
+        options = {}
+    ) {
         this.host = host;
         this.port = port;
         this.clientId = options.clientId ?? null;
