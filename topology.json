@@ -1,0 +1,21 @@
+{
+  "$comment": "Copiá estos bloques sobre los de arriba para correr TODO en una sola laptop (localhost). Un solo comando: `npm run topogen && npm run up -- --machine M0`.",
+  "machines": {
+    "M0": {
+      "host": "127.0.0.1",
+      "runs": { "dispatcher": true, "db": "primary", "bo": ["bo-1", "bo-2", "bo-3"] }
+    }
+  },
+  "dispatcher": { "host": "127.0.0.1", "port": 3000 },
+  "db": {
+    "primary": { "host": "127.0.0.1", "port": 5432 },
+    "replicas": [{ "host": "127.0.0.1", "port": 5433 }]
+  },
+  "services": {
+    "Criminal": [
+      { "id": "bo-1", "host": "127.0.0.1", "port": 4001 },
+      { "id": "bo-2", "host": "127.0.0.1", "port": 4002 },
+      { "id": "bo-3", "host": "127.0.0.1", "port": 4003 }
+    ]
+  }
+}

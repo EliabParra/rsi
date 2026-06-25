@@ -4,3 +4,6 @@ build/
 .atl
 .claude
 .env
+# Generados por tools/topogen.js desde topology.json (espejan los secretos de .env).
+.env.*
+!.env.example

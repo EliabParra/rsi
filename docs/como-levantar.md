@@ -219,6 +219,147 @@ docker exec rsi-db-primary psql -U rsi -d criminals -c \
 
 ---
 
+# 🧭 Runbook de despliegue (referencia rápida)
+
+Esta sección es **autoexplicativa**: con esto solo, levantar en 1 o en N laptops debería ser trivial. Resume las dos topologías, qué variable setear en cada máquina y **por qué**. El detalle paso a paso por versión está más arriba; esto es el mapa.
+
+## Cómo se descubren los BOs (leé esto y entendés todas las variables)
+
+El sistema tiene tres piezas que se hablan por TCP: **Cliente → Dispatcher → BO server → DB**.
+
+1. Cada **BO** escucha en `this.host:this.port` y, al arrancar, le manda un `register` + heartbeats al **Dispatcher**. ¿A qué dirección de Dispatcher disca? A `config.dispatcher`, o sea **`DISPATCHER_HOST` / `DISPATCHER_PORT`**. → Si esto está mal, el BO **nunca registra**, el LoadBalancer nunca lo rankea, y el Dispatcher dirá *"no se encontró el servidor de objetos de negocio"*.
+2. En ese `register`, el BO **anuncia su propio `host`** (el `this.host`, que sale de `--host` o `RSI_HOST` o `getLocalIP()`). El **Dispatcher guarda ese host** y, cuando elige ese BO, **reenvía la request a ese `host:port` anunciado**. → Si el BO anuncia `127.0.0.1`, el Dispatcher intenta reenviar a *sí mismo*, no al BO. Por eso en N laptops **`RSI_HOST` debe ser la IP LAN propia de cada máquina**, no `127.0.0.1`.
+3. El **BO** (no el Dispatcher) abre los pools de DB con **`DB_WRITE_HOST` / `DB_READ_HOST`**. → En N laptops debe ser la **IP LAN del host de la DB** (M0), nunca `localhost`: `localhost` en un BO remoto apunta a *esa* laptop, donde no hay Postgres.
+
+En una sola laptop todo esto colapsa a `127.0.0.1` y no hay que pensarlo. El cuidado es exclusivamente para N laptops.
+
+## Tabla de variables — qué es cada una
+
+| Variable | Qué es / por qué | Ejemplo (config viva) |
+|---|---|---|
+| `DISPATCHER_HOST` | IP del Dispatcher (M0). El HeartbeatClient de **cada** BO disca acá para registrarse. **Debe apuntar al M0 en TODAS las máquinas.** | `10.239.207.156` |
+| `DISPATCHER_PORT` | Puerto del Dispatcher. | `3000` |
+| `RSI_HOST` | IP que el BO **anuncia** al Dispatcher (a dónde reenviar). Debe ser la **IP LAN propia** de cada máquina. En 1 laptop: `127.0.0.1`. | `10.239.207.176` (en BO-2) |
+| `BO_ID` | Identificador único del BO. No puede repetirse entre réplicas. | `bo-2` |
+| `BO_PORT` | Puerto donde el BO escucha. Debe ser **alcanzable por el Dispatcher** desde la LAN. En laptops distintas puede repetirse (`4001`) porque cambia el host. | `4001` |
+| `DB_WRITE_HOST` | IP del host de la DB primary (escrituras). **IP LAN de M0**, no `localhost`. | `10.239.207.156` |
+| `DB_WRITE_PORT` | Puerto del primary. | `5432` |
+| `DB_READ_HOST` | IP del host de la réplica (lecturas). Misma máquina M0 (ambas DBs viven en Docker en M0). | `10.239.207.156` |
+| `DB_READ_PORT` | Puerto de la réplica. | `5433` |
+| `DB_USER` / `DB_PASSWORD` / `DB_NAME` | Credenciales y base. Iguales en todas las máquinas. | `rsi` / `rsi` / `criminals` |
+| `BO_1_HOST` / `BO_2_HOST` / `BO_3_HOST` | (Solo en M0) Fallback estático de hosts de las réplicas. El LB igual los aprende por heartbeat; esto es respaldo. | `.156` / `.176` / `.244` |
+
+> En la **versión anterior (LB)** la DB es una sola: usá `DB_HOST` / `DB_PORT` en vez de los `WRITE/READ`. El código hace fallback (`DB_WRITE_HOST || DB_HOST`), así que cualquiera de los dos esquemas funciona.
+
+## Escenario A — Una sola laptop
+
+Todo en `127.0.0.1`, multipuerto. Pasos:
+
+```bash
+docker compose up -d                 # DB primary (5432) + réplica (5433) + Adminer (8080)
+export $(grep -v '^#' .env | xargs)  # cargar variables (con RSI_HOST=127.0.0.1, DISPATCHER_HOST=127.0.0.1, DB_*_HOST=127.0.0.1)
+
+# Terminal 1 — Dispatcher
+node start.js
+
+# Terminales 2/3/4 — tres BOs (mismo código, distinto id y puerto)
+node start-bo.js --id bo-1 --port 4001
+node start-bo.js --id bo-2 --port 4002
+node start-bo.js --id bo-3 --port 4003
+
+# Terminal 5 — cliente
+node client/ClientServer.js          # flujo del cluster
+# o bien:  node client/loadTest.js   # generador de carga (demo del balanceo)
+```
+
+El `--host` lo detecta solo con `getLocalIP()`; en 1 laptop conviene que el `.env` tenga `RSI_HOST=127.0.0.1` para que todo apunte a loopback.
+
+## Escenario B — N laptops (config viva, red `10.239.207.x`)
+
+Topología real en uso:
+
+| Máquina | IP LAN | Procesos | Puertos inbound a abrir (firewall) |
+|---|---|---|---|
+| **M0** | `10.239.207.156` | Dispatcher + DB primary + DB réplica (Docker) + **BO-1** + cliente/loadTest | `3000` (dispatcher), `4001` (BO-1), `5432` (primary), `5433` (réplica) |
+| **M2** | `10.239.207.176` | **BO-2** | `4001` (BO-2) |
+| **M3** | `10.239.207.244` | **BO-3** | `4001` (BO-3) |
+
+> "Inbound" = lo que la máquina debe **aceptar** desde la LAN. El Dispatcher (M0) disca a `4001` de cada BO para reenviar; cada BO disca a `3000` de M0 (heartbeat) y a `5432/5433` de M0 (DB). Adminer (`8080`) es opcional, solo si querés la UI web de la DB.
+
+### `.env` por máquina (lo mínimo que cambia)
+
+**M0 (`10.239.207.156`)** — corre Dispatcher + DBs + BO-1:
+```env
+DISPATCHER_HOST=10.239.207.156   # el Dispatcher escucha acá y los BOs discan acá
+DISPATCHER_PORT=3000
+RSI_HOST=10.239.207.156          # BO-1 (local en M0) anuncia esta IP
+BO_ID=bo-1
+BO_PORT=4001
+DB_WRITE_HOST=10.239.207.156     # primary, en Docker local
+DB_WRITE_PORT=5432
+DB_READ_HOST=10.239.207.156      # réplica, en Docker local
+DB_READ_PORT=5433
+DB_USER=rsi
+DB_PASSWORD=rsi
+DB_NAME=criminals
+```
+
+**M2 (`10.239.207.176`)** — solo BO-2:
+```env
+DISPATCHER_HOST=10.239.207.156   # apunta al M0 (NO a sí misma)
+DISPATCHER_PORT=3000
+RSI_HOST=10.239.207.176          # su propia IP LAN (lo que anuncia al Dispatcher)
+BO_ID=bo-2
+BO_PORT=4001
+DB_WRITE_HOST=10.239.207.156     # la DB vive en M0
+DB_WRITE_PORT=5432
+DB_READ_HOST=10.239.207.156
+DB_READ_PORT=5433
+DB_USER=rsi
+DB_PASSWORD=rsi
+DB_NAME=criminals
+```
+
+**M3 (`10.239.207.244`)** — solo BO-3: idéntico a M2, cambiando `RSI_HOST=10.239.207.244` y `BO_ID=bo-3`.
+
+### Orden de arranque (importante)
+
+El BO necesita que el Dispatcher y la DB ya estén arriba; si no, no registra (heartbeat sin destino) o falla al abrir el pool.
+
+```
+1) M0:  docker compose up -d        # primero la DB (primary + réplica)
+2) M0:  export $(grep -v '^#' .env | xargs) && node start.js      # Dispatcher
+3) M2:  export $(grep -v '^#' .env | xargs) && node start-bo.js   # BO-2 (lee BO_ID/BO_PORT/RSI_HOST del .env)
+4) M3:  export $(grep -v '^#' .env | xargs) && node start-bo.js   # BO-3
+5) M0:  export $(grep -v '^#' .env | xargs) && node start-bo.js   # BO-1 (local)
+6) M0:  export $(grep -v '^#' .env | xargs) && node client/ClientServer.js   # o loadTest.js
+```
+
+> `start-bo.js` toma `BO_ID`/`BO_PORT` del `.env`, así que en cada máquina no hace falta pasar flags si el `.env` ya está bien. Si querés ser explícito: `node start-bo.js --id bo-2 --port 4001`. Las flags `--id/--port/--host` pisan al `.env`.
+
+### Checklist de firewall (la causa #1 de "no registra")
+
+Abrí en la LAN, por máquina, los puertos **inbound** de la tabla de arriba:
+
+```bash
+# M0 — debe aceptar: 3000 (dispatcher), 4001 (BO-1), 5432 + 5433 (DB)
+sudo ufw allow from 10.239.207.0/24 to any port 3000,4001,5432,5433 proto tcp
+# M2 / M3 — cada una debe aceptar 4001 (su BO)
+sudo ufw allow from 10.239.207.0/24 to any port 4001 proto tcp
+```
+
+> Postgres ya publica en `0.0.0.0` vía Docker (`ports: 5432:5432`, `5433:5432`), así que del lado app solo falta abrir el firewall del host. Si la máquina no usa `ufw`, abrí los mismos puertos con la herramienta que tengas (`firewalld`, reglas de `iptables`, etc.).
+
+### Patrón de carga de variables (en cada terminal nueva)
+
+```bash
+export $(grep -v '^#' .env | xargs)
+```
+
+Esto exporta cada línea `CLAVE=valor` del `.env` (ignorando comentarios) al entorno del shell, que es de donde `config.js` y `db/pool.js` leen. **Hacelo en cada terminal antes de lanzar cualquier proceso Node.**
+
+---
+
 ## 🔌 Tabla de puertos
 
 | Servicio | Puerto | Rol |
@@ -246,5 +387,39 @@ docker exec rsi-db-primary psql -U rsi -d criminals -c \
 docker compose down       # para los containers (conserva datos)
 docker compose down -v    # para + borra volúmenes (reinicia schema + seed)
 ```
+
+## 🛰️ Despliegue con un comando (topology.json)
+
+Una sola **fuente de verdad del despliegue** vive en `topology.json` (separada del contrato `.sdl`). Describe qué máquina corre qué: dispatcher, DB (primary/réplicas) y qué BO (`bo-1/2/3`). De ahí salen los `.env` y el arranque, sin tocar `start.js`, `start-bo.js` ni `shared/config.js`.
+
+**Flujo (3 pasos):**
+
+1. **Editá `topology.json`.** Por defecto trae el cluster real (M0 `10.239.207.156` = dispatcher + DB + bo-1; M1 `10.239.207.176` = bo-2; M2 `10.239.207.244` = bo-3). Para correr TODO en **una sola laptop**, dejá una sola máquina con `host: "127.0.0.1"` que corra `dispatcher + db + [bo-1, bo-2, bo-3]` y apuntá `dispatcher`/`db` a `127.0.0.1` (hay un bloque `$example_single_machine` listo para copiar).
+
+2. **Generá los `.env` una vez** (desde cualquier máquina, suele ser la tuya):
+
+   ```bash
+   npm run topogen
+   ```
+
+   Escribe un `.env.<máquina>` por entrada (ej. `.env.M0`, `.env.M1`, `.env.M2`) con EXACTAMENTE las variables que consume `shared/config.js` (`RSI_HOST`, `DISPATCHER_HOST/PORT`, `DB_WRITE_*`, `DB_READ_*`/`DB_READ_HOSTS`, y los `BO_n_HOST/PORT/ID` posicionales). Es idempotente.
+
+3. **En cada laptop**, levantá lo suyo:
+
+   ```bash
+   docker compose up -d              # SOLO si esa máquina corre la DB
+   npm run up -- --machine M0        # arranca dispatcher + sus BO según topology.json
+   ```
+
+   `npm run up` (sin `--machine`) **auto-detecta** la máquina comparando tu IP local contra los `host` de `topology.json`. Si no encuentra match, te pide `--machine` explícito.
+
+**Verificar sin cluster vivo (`--dry-run`):** imprime exactamente qué procesos arrancaría y con qué env, sin spawnear nada.
+
+```bash
+node tools/up.js --machine M0 --dry-run   # dispatcher + bo-1
+node tools/up.js --machine M1 --dry-run   # solo bo-2
+```
+
+> `up` **no** levanta Postgres: si la máquina corre la DB, te recuerda correr `docker compose up -d`. El stdout/stderr de cada hijo sale con prefijo `[dispatcher]` / `[bo-1]` para que sepas quién dice qué. Ctrl+C tumba a todos.
 
 > Más detalle: [load-balancer.md](./load-balancer.md), [como-funciona.md](./como-funciona.md), [cluster-db.md](./cluster-db.md), [guia-pruebas.md](./guia-pruebas.md).
