@@ -1,0 +1,96 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "SDL",
+  "scopeName": "source.sdl",
+  "patterns": [
+    { "include": "#comments" },
+    { "include": "#service-decl" },
+    { "include": "#method-decl" },
+    { "include": "#returns-clause" },
+    { "include": "#param" },
+    { "include": "#keywords" },
+    { "include": "#type-modifiers" },
+    { "include": "#punctuation" },
+    { "include": "#identifiers" }
+  ],
+  "repository": {
+    "comments": {
+      "patterns": [
+        {
+          "name": "comment.line.double-slash.sdl",
+          "begin": "//",
+          "end": "$",
+          "beginCaptures": {
+            "0": { "name": "punctuation.definition.comment.sdl" }
+          }
+        }
+      ]
+    },
+    "keywords": {
+      "patterns": [
+        {
+          "name": "keyword.control.sdl",
+          "match": "\\b(service|returns)\\b"
+        }
+      ]
+    },
+    "service-decl": {
+      "match": "\\b(service)\\s+([A-Za-z_][A-Za-z0-9_]*)\\b",
+      "captures": {
+        "1": { "name": "keyword.control.service.sdl" },
+        "2": { "name": "entity.name.type.service.sdl" }
+      }
+    },
+    "method-decl": {
+      "match": "\\b([A-Za-z_][A-Za-z0-9_]*)\\s*(?=\\()",
+      "captures": {
+        "1": { "name": "entity.name.function.method.sdl" }
+      }
+    },
+    "returns-clause": {
+      "match": "\\b(returns)\\s+([A-Za-z_][A-Za-z0-9_]*)",
+      "captures": {
+        "1": { "name": "keyword.control.returns.sdl" },
+        "2": { "name": "support.type.sdl" }
+      }
+    },
+    "param": {
+      "match": "\\b([A-Za-z_][A-Za-z0-9_]*)\\s*(:)\\s*([A-Za-z_][A-Za-z0-9_]*)",
+      "captures": {
+        "1": { "name": "variable.parameter.sdl" },
+        "2": { "name": "punctuation.separator.type.sdl" },
+        "3": { "name": "support.type.sdl" }
+      }
+    },
+    "type-modifiers": {
+      "patterns": [
+        {
+          "name": "punctuation.definition.array.sdl",
+          "match": "\\[\\]"
+        },
+        {
+          "name": "keyword.operator.optional.sdl",
+          "match": "\\?"
+        }
+      ]
+    },
+    "punctuation": {
+      "patterns": [
+        { "name": "punctuation.definition.block.begin.sdl", "match": "\\{" },
+        { "name": "punctuation.definition.block.end.sdl", "match": "\\}" },
+        { "name": "punctuation.definition.parameters.begin.sdl", "match": "\\(" },
+        { "name": "punctuation.definition.parameters.end.sdl", "match": "\\)" },
+        { "name": "punctuation.separator.comma.sdl", "match": "," },
+        { "name": "punctuation.separator.colon.sdl", "match": ":" }
+      ]
+    },
+    "identifiers": {
+      "patterns": [
+        {
+          "name": "variable.other.sdl",
+          "match": "\\b[A-Za-z_][A-Za-z0-9_]*\\b"
+        }
+      ]
+    }
+  }
+}

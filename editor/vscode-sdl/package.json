@@ -1,0 +1,39 @@
+{
+  "name": "rsi-sdl",
+  "displayName": "RSI SDL",
+  "description": "Syntax highlighting and live diagnostics for the RSI .sdl service definition language.",
+  "version": "0.1.0",
+  "publisher": "rsi",
+  "engines": {
+    "vscode": "^1.75.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "main": "./extension.js",
+  "activationEvents": [
+    "onLanguage:sdl"
+  ],
+  "contributes": {
+    "languages": [
+      {
+        "id": "sdl",
+        "aliases": [
+          "SDL",
+          "sdl"
+        ],
+        "extensions": [
+          ".sdl"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "sdl",
+        "scopeName": "source.sdl",
+        "path": "./syntaxes/sdl.tmLanguage.json"
+      }
+    ]
+  }
+}
