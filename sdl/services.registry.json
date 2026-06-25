@@ -1,0 +1,61 @@
+{
+  "version": 1,
+  "generatedFrom": [
+    "sdl/criminal.sdl"
+  ],
+  "services": {
+    "Criminal": {
+      "className": "Criminal",
+      "methods": {
+        "create": {
+          "params": [
+            "full_name",
+            "alias",
+            "nationality",
+            "crime",
+            "danger_level",
+            "captured"
+          ],
+          "returns": "Criminal"
+        },
+        "getById": {
+          "params": [
+            "id"
+          ],
+          "returns": "Criminal"
+        },
+        "list": {
+          "params": [
+            "limit",
+            "offset"
+          ],
+          "returns": "Criminal[]"
+        },
+        "search": {
+          "params": [
+            "q"
+          ],
+          "returns": "Criminal[]"
+        },
+        "update": {
+          "params": [
+            "id",
+            "full_name",
+            "alias",
+            "nationality",
+            "crime",
+            "danger_level",
+            "captured"
+          ],
+          "returns": "Criminal"
+        },
+        "remove": {
+          "params": [
+            "id"
+          ],
+          "returns": "Criminal"
+        }
+      }
+    }
+  }
+}

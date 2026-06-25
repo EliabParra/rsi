@@ -1,0 +1,22 @@
+// Criminal service — IDL for the RSI business object.
+// Routing (read/write replica selection) lives in the DB layer, not here.
+
+service Criminal {
+  // 6 params -> object form: create(args)
+  create(full_name: string, alias: string?, nationality: string?, crime: string, danger_level: int?, captured: bool?) returns Criminal
+
+  // 1 param -> positional form: getById(id)
+  getById(id: int) returns Criminal
+
+  // 2 params -> object form: list(args = {})
+  list(limit: int?, offset: int?) returns Criminal[]
+
+  // 1 param -> positional form: search(q)
+  search(q: string) returns Criminal[]
+
+  // 2+ params -> object form: update(args)
+  update(id: int, full_name: string?, alias: string?, nationality: string?, crime: string?, danger_level: int?, captured: bool?) returns Criminal
+
+  // 1 param -> positional form: remove(id)
+  remove(id: int) returns Criminal
+}
