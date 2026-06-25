@@ -41,7 +41,7 @@ if (Number.isNaN(port)) {
   process.exit(1)
 }
 
-// DB hosts/ports are read by db/pool.js from process.env directly — no action needed here.
+// DB hosts/ports are read by db/cluster.js (DbCluster) from process.env directly — no action needed here.
 // Export .env before running: export $(grep -v '^#' .env | xargs)
 
 const bo = new BOServer({ id, host, port })

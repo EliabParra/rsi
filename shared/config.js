@@ -6,6 +6,27 @@ const toPort = (value, fallback) => {
     return Number.isFinite(parsed) ? parsed : fallback
 }
 
+// Parsea DB_READ_HOSTS ("host:port,host2:port2") a una lista de réplicas.
+// Si no está definida, degrada al comportamiento actual: una sola réplica
+// derivada de DB_READ_HOST/DB_READ_PORT (o DB_HOST/DB_PORT, o localHost:5432).
+const parseReplicas = () => {
+    const list = (process.env.DB_READ_HOSTS || '')
+        .split(',')
+        .map((entry) => entry.trim())
+        .filter(Boolean)
+        .map((entry) => {
+            const [host, port] = entry.split(':')
+            return { host: host.trim(), port: toPort(port, 5432) }
+        })
+
+    if (list.length > 0) return list
+
+    return [{
+        host: process.env.DB_READ_HOST || process.env.DB_HOST || localHost,
+        port: toPort(process.env.DB_READ_PORT || process.env.DB_PORT, 5432),
+    }]
+}
+
 export const config = {
     dispatcher: {
         host: process.env.DISPATCHER_HOST || localHost,
@@ -36,7 +57,10 @@ export const config = {
         user: process.env.DB_USER || 'rsi',
         password: process.env.DB_PASSWORD || 'rsi',
         database: process.env.DB_NAME || 'criminals',
-        max: toPort(process.env.DB_POOL_MAX, 10)
+        max: toPort(process.env.DB_POOL_MAX, 10),
+        // Lista de réplicas de lectura. Degrada a una sola réplica (comportamiento
+        // actual) cuando DB_READ_HOSTS no está definida.
+        replicas: parseReplicas()
     },
     // Parámetros operativos del balanceador (Fases 2-5).
     loadBalancer: {

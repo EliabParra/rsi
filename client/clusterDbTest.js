@@ -1,5 +1,5 @@
 /**
- * Smoke test del flujo Cluster DB vía Dispatcher → BO → writePool/readPool.
+ * Smoke test del flujo Cluster DB vía Dispatcher → BO → DbCluster (write→primary / read→réplica).
  *
  * Uso directo:
  *   export $(grep -v '^#' .env | xargs) && node client/clusterDbTest.js

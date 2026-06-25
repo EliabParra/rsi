@@ -56,7 +56,7 @@ function printResult(label, res) {
 }
 
 async function runReadsOnly(proxy) {
-  console.log('Modo: solo lecturas (readPool → réplica)\n')
+  console.log('Modo: solo lecturas (→ réplica)\n')
 
   printResult('list(limit:5)', await proxy.list({ limit: 5 }))
   printResult('search("El Chapo")', await proxy.search('El Chapo'))
